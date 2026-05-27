@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>The Unsent Chamber</title>
+
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -16,21 +17,33 @@
       align-items: center;
       height: 100vh;
     }
-    #passwordScreen, #homeScreen, #postScreen, #searchScreen {
+
+    #passwordScreen,
+    #homeScreen,
+    #postScreen,
+    #searchScreen {
       display: none;
       flex-direction: column;
       align-items: center;
       gap: 20px;
     }
+
     button {
       padding: 10px 20px;
-      background: #444;
+      background: #222;
       color: #fff;
       border: none;
       border-radius: 5px;
       cursor: pointer;
+      transition: 0.3s;
     }
-    input, textarea {
+
+    button:hover {
+      background: #444;
+    }
+
+    input,
+    textarea {
       padding: 10px;
       border-radius: 5px;
       border: none;
@@ -38,15 +51,32 @@
       max-width: 400px;
       background: #111;
       color: white;
+      outline: none;
     }
+
     textarea {
       resize: none;
     }
+
     #searchResults {
       max-width: 400px;
+      width: 80vw;
       text-align: left;
       overflow-y: auto;
       max-height: 300px;
+      margin-top: 10px;
+    }
+
+    .messageCard {
+      margin-bottom: 15px;
+      padding: 12px;
+      background: #111;
+      border: 1px solid #333;
+      border-radius: 10px;
+    }
+
+    .messageCard small {
+      color: #888;
     }
   </style>
 </head>
@@ -66,21 +96,40 @@
 
   <div id="postScreen">
     <h2>Send a Message</h2>
-    <input type="text" id="postName" placeholder="To (Name)" />
-    <textarea id="postMessage" placeholder="Your Message" rows="5"></textarea>
+
+    <input
+      type="text"
+      id="postName"
+      placeholder="To (Name)"
+    />
+
+    <textarea
+      id="postMessage"
+      placeholder="Your Message"
+      rows="5"
+    ></textarea>
+
     <button onclick="submitPost()">Send</button>
     <button onclick="goHome()">Back</button>
   </div>
 
   <div id="searchScreen">
     <h2>Search Messages</h2>
-    <input type="text" id="searchInput" placeholder="Enter name" />
+
+    <input
+      type="text"
+      id="searchInput"
+      placeholder="Enter name"
+    />
+
     <button onclick="searchMessages()">Search</button>
+
     <div id="searchResults"></div>
+
     <button onclick="goHome()">Back</button>
   </div>
 
-  <!-- Firebase SDKs -->
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.4.0/firebase-database-compat.js"></script>
 
@@ -109,12 +158,19 @@
 
     function checkPassword() {
       const entered = document.getElementById("passwordInput").value;
+
       if (entered === CORRECT_PASSWORD) {
         document.getElementById("passwordScreen").style.display = "none";
         document.getElementById("homeScreen").style.display = "flex";
       } else {
         alert("Wrong password");
       }
+    }
+
+    function hideAllScreens() {
+      document.getElementById("homeScreen").style.display = "none";
+      document.getElementById("postScreen").style.display = "none";
+      document.getElementById("searchScreen").style.display = "none";
     }
 
     function goHome() {
@@ -132,42 +188,79 @@
       document.getElementById("searchScreen").style.display = "flex";
     }
 
-    function hideAllScreens() {
-      document.getElementById("homeScreen").style.display = "none";
-      document.getElementById("postScreen").style.display = "none";
-      document.getElementById("searchScreen").style.display = "none";
+    // Basic sanitization
+    function sanitize(text) {
+      return text
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
     }
 
     async function submitPost() {
-      const name = document.getElementById("postName").value.trim();
-      const msg = document.getElementById("postMessage").value.trim();
-      if (!name || !msg) return alert("Fill both fields");
+      const name = document
+        .getElementById("postName")
+        .value
+        .trim()
+        .toLowerCase();
+
+      const msg = sanitize(
+        document
+          .getElementById("postMessage")
+          .value
+          .trim()
+      );
+
+      if (!name || !msg) {
+        return alert("Fill both fields");
+      }
+
+      if (msg.length > 500) {
+        return alert("Message too long");
+      }
 
       const messageData = {
-        name: name.toLowerCase(),
+        name,
         message: msg,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        deviceId: crypto.randomUUID()
       };
 
       try {
-        await database.ref("unsentMessages").push(messageData);
+        await database
+          .ref("unsentMessages")
+          .push(messageData);
+
         alert("Message sent");
+
         document.getElementById("postName").value = "";
         document.getElementById("postMessage").value = "";
+
         goHome();
+
       } catch (error) {
         console.error(error);
-        alert("Failed to send");
+        alert("Failed to send: " + error.message);
       }
     }
 
     async function searchMessages() {
-      const search = document.getElementById("searchInput").value.trim().toLowerCase();
+      const search = document
+        .getElementById("searchInput")
+        .value
+        .trim()
+        .toLowerCase();
+
       const results = document.getElementById("searchResults");
+
       results.innerHTML = "";
 
+      if (!search) {
+        alert("Enter a name");
+        return;
+      }
+
       try {
-        const snapshot = await database.ref("unsentMessages")
+        const snapshot = await database
+          .ref("unsentMessages")
           .orderByChild("name")
           .equalTo(search)
           .once("value");
@@ -177,15 +270,25 @@
           return;
         }
 
-        snapshot.forEach(child => {
+        snapshot.forEach((child) => {
           const data = child.val();
-          const p = document.createElement("p");
-          p.textContent = data.message;
-          results.appendChild(p);
+
+          const div = document.createElement("div");
+          div.className = "messageCard";
+
+          div.innerHTML = `
+            <p>${data.message}</p>
+            <small>
+              ${new Date(data.timestamp).toLocaleString()}
+            </small>
+          `;
+
+          results.appendChild(div);
         });
+
       } catch (error) {
         console.error(error);
-        alert("Search failed");
+        alert("Search failed: " + error.message);
       }
     }
   </script>
