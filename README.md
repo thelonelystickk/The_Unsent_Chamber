@@ -18,7 +18,7 @@ Send messages that were unsent for long...
 
 # Live Website
 
-https://yourusername.github.io/THE-UNSENT-CHAMBER/
+https://thelonelystickk.github.io/THE-UNSENT-CHAMBER/
 
 ---
 
@@ -29,9 +29,5 @@ https://yourusername.github.io/THE-UNSENT-CHAMBER/
 * JavaScript
 * Firebase Realtime Database
 * GitHub Pages
-
----
-
-# thelonelystickk
 
 Created by Bhawishya.
